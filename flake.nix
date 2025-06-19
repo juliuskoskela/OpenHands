@@ -4,6 +4,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
+    poetry2nix = {
+      url = "github:nix-community/poetry2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs@{ flake-parts, ... }:
@@ -12,25 +16,30 @@
 
       perSystem = { config, self', inputs', pkgs, system, ... }: {
         packages = {
-          # Default package will be the combined OpenHands application
+          # Default package is the OpenHands launcher
           default = self'.packages.openhands;
 
-          # Development launcher script
+          # OpenHands launcher - improved version with poetry2nix roadmap
           openhands = pkgs.writeShellScriptBin "openhands" ''
-            echo "🚀 OpenHands Development Launcher"
-            echo "This is a development version. For production, use poetry or pip install."
+            echo "🚀 OpenHands Nix Launcher"
             echo ""
-            echo "To run OpenHands in development mode:"
-            echo "1. nix develop"
-            echo "2. poetry install"
-            echo "3. poetry run python -m openhands.server"
+            echo "Current status: Hybrid Nix + Poetry setup"
+            echo "Roadmap: Full poetry2nix integration (in progress)"
             echo ""
-            echo "Or use the development environment directly:"
-            echo "nix develop --command bash -c 'poetry install && poetry run python -m openhands.server'"
+            echo "For best compatibility, use the development environment:"
+            echo "  nix develop"
+            echo "  poetry install"
+            echo "  poetry run python -m openhands.server"
+            echo ""
+            echo "This provides:"
+            echo "  ✅ Reproducible system dependencies (via Nix)"
+            echo "  ✅ Exact Python dependencies (via Poetry)"
+            echo "  🔄 Working towards: Full Nix dependency management (via poetry2nix)"
+            echo ""
           '';
         };
 
-        # Development shell
+        # Development shell - back to working version
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             # Python development
@@ -50,9 +59,6 @@
             ruff
             mypy
 
-            # Testing
-            python312Packages.pytest
-
             # Other useful tools
             curl
             jq
@@ -64,11 +70,19 @@
             echo "📦 Node.js $(node --version)"
             echo "📦 npm $(${pkgs.nodejs_20}/bin/npm --version)"
             echo ""
+            echo "Current setup: Hybrid Nix + Poetry (working towards poetry2nix)"
+            echo ""
             echo "Available commands:"
-            echo "  poetry install    - Install Python dependencies"
+            echo "  poetry install - Install Python dependencies"
+            echo "  poetry run python -m openhands.server - Run OpenHands"
             echo "  cd frontend && ${pkgs.nodejs_20}/bin/npm install - Install frontend dependencies"
             echo "  pre-commit install - Set up git hooks"
-            echo "  nix run .#openhands - Run OpenHands"
+            echo "  nix run .#fmt - Format code"
+            echo ""
+            echo "Next steps for full Nixification:"
+            echo "  🔄 poetry2nix integration (resolving dependency conflicts)"
+            echo "  🔄 Frontend build pipeline"
+            echo "  🔄 Container generation"
             echo ""
 
             # Set up environment variables
