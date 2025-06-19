@@ -15,31 +15,18 @@
           # Default package will be the combined OpenHands application
           default = self'.packages.openhands;
 
-          # Simple Python backend package (development version)
-          openhands-backend = pkgs.writeShellScriptBin "openhands-backend" ''
-            export PYTHONPATH="${./.}:$PYTHONPATH"
-            exec ${pkgs.python312}/bin/python -m openhands.server "$@"
-          '';
-
-          # Frontend build package (placeholder for now)
-          openhands-frontend = pkgs.writeTextFile {
-            name = "openhands-frontend";
-            text = "Frontend placeholder";
-          };
-
-          # Combined package
+          # Development launcher script
           openhands = pkgs.writeShellScriptBin "openhands" ''
-            export PATH="${pkgs.lib.makeBinPath [
-              self'.packages.openhands-backend
-              pkgs.git
-              pkgs.docker
-            ]}:$PATH"
-
-            # Set up environment
-            export PYTHONPATH="${self'.packages.openhands-backend}/${pkgs.python312.sitePackages}:$PYTHONPATH"
-
-            # Run OpenHands
-            exec ${self'.packages.openhands-backend}/bin/python -m openhands.server "$@"
+            echo "🚀 OpenHands Development Launcher"
+            echo "This is a development version. For production, use poetry or pip install."
+            echo ""
+            echo "To run OpenHands in development mode:"
+            echo "1. nix develop"
+            echo "2. poetry install"
+            echo "3. poetry run python -m openhands.server"
+            echo ""
+            echo "Or use the development environment directly:"
+            echo "nix develop --command bash -c 'poetry install && poetry run python -m openhands.server'"
           '';
         };
 

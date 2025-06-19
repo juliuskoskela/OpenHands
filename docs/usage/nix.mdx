@@ -1,0 +1,340 @@
+# Nix Development and Deployment
+
+OpenHands supports [Nix](https://nixos.org/) for reproducible development environments and deployment. This provides an alternative to Docker-based development and enables deployment on NixOS systems.
+
+## Prerequisites
+
+1. Install Nix with flakes support:
+   ```bash
+   # Install Nix (if not already installed)
+   curl -L https://nixos.org/nix/install | sh
+   
+   # Enable flakes (add to ~/.config/nix/nix.conf or /etc/nix/nix.conf)
+   experimental-features = nix-command flakes
+   ```
+
+2. Optionally install direnv for automatic environment loading:
+   ```bash
+   # On NixOS
+   nix-env -iA nixos.direnv
+   
+   # On other systems
+   nix-env -iA nixpkgs.direnv
+   ```
+
+## Development Environment
+
+### Quick Start
+
+1. Clone the repository and enter the development shell:
+   ```bash
+   git clone https://github.com/All-Hands-AI/OpenHands.git
+   cd OpenHands
+   nix develop
+   ```
+
+2. The development shell provides:
+   - Python 3.12 with Poetry
+   - Node.js 20 with npm
+   - Git, Docker, and other development tools
+   - Pre-commit hooks and formatters
+
+### Available Commands
+
+Once in the development shell:
+
+```bash
+# Install Python dependencies
+poetry install
+
+# Install frontend dependencies
+cd frontend && npm install
+
+# Set up git hooks
+pre-commit install
+
+# Run OpenHands (after dependencies are installed)
+nix run .#openhands
+
+# Format code
+nix run .#fmt
+
+# Run CI checks
+nix run .#ci
+```
+
+### Using direnv (Optional)
+
+Create a `.envrc` file in the project root:
+```bash
+echo "use flake" > .envrc
+direnv allow
+```
+
+This will automatically load the development environment when you enter the directory.
+
+## Building OpenHands
+
+### Build Packages
+
+```bash
+# Build the backend package
+nix build .#openhands-backend
+
+# Build the frontend package
+nix build .#openhands-frontend
+
+# Build the combined package
+nix build .#openhands
+```
+
+### Run OpenHands
+
+```bash
+# Run directly from the flake
+nix run .#openhands
+
+# Or run the built package
+./result/bin/openhands
+```
+
+## NixOS Deployment
+
+OpenHands can be deployed as a system service on NixOS without Docker.
+
+### Basic Configuration
+
+Add to your NixOS configuration (`/etc/nixos/configuration.nix`):
+
+```nix
+{
+  # Import the OpenHands flake
+  inputs.openhands.url = "github:All-Hands-AI/OpenHands";
+  
+  # In your system configuration
+  imports = [
+    inputs.openhands.nixosModules.openhands
+  ];
+  
+  services.openhands = {
+    enable = true;
+    
+    # Basic settings
+    settings = {
+      port = 3000;
+      host = "127.0.0.1";  # Bind to localhost only
+    };
+    
+    # Optional: Set API tokens
+    environment = {
+      GITHUB_TOKEN = "your-github-token";
+      OPENAI_API_KEY = "your-openai-key";
+    };
+  };
+  
+  # Optional: Open firewall port
+  networking.firewall.allowedTCPPorts = [ 3000 ];
+}
+```
+
+### Advanced Configuration
+
+```nix
+services.openhands = {
+  enable = true;
+  
+  # Custom package (if you want to use a specific version)
+  package = inputs.openhands.packages.${system}.openhands;
+  
+  # Service settings
+  user = "openhands";
+  group = "openhands";
+  
+  # Application settings
+  settings = {
+    port = 3000;
+    host = "0.0.0.0";  # Bind to all interfaces
+    
+    # LLM configuration
+    llm = {
+      model = "gpt-4";
+      api_key = "your-api-key";
+    };
+    
+    # Security settings
+    security = {
+      confirmation_mode = true;
+      security_analyzer = "default";
+    };
+  };
+  
+  # Environment variables
+  environment = {
+    GITHUB_TOKEN = "your-github-token";
+    GITLAB_TOKEN = "your-gitlab-token";
+    OPENAI_API_KEY = "your-openai-key";
+  };
+  
+  # Docker integration (if needed)
+  docker = {
+    enable = true;
+    socket = "/var/run/docker.sock";
+  };
+};
+
+# Create dedicated user
+users.users.openhands = {
+  isSystemUser = true;
+  group = "openhands";
+  home = "/var/lib/openhands";
+  createHome = true;
+};
+
+users.groups.openhands = {};
+
+# Optional: Add to docker group if using Docker runtime
+users.users.openhands.extraGroups = [ "docker" ];
+```
+
+### Reverse Proxy Setup
+
+For production deployment, use a reverse proxy:
+
+```nix
+services.nginx = {
+  enable = true;
+  virtualHosts."openhands.example.com" = {
+    enableACME = true;
+    forceSSL = true;
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:3000";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      '';
+    };
+  };
+};
+
+security.acme.acceptTerms = true;
+security.acme.defaults.email = "admin@example.com";
+```
+
+## Development Workflow
+
+### Making Changes
+
+1. Enter the development environment:
+   ```bash
+   nix develop
+   ```
+
+2. Make your changes to the code
+
+3. Format and check your code:
+   ```bash
+   nix run .#fmt      # Format code
+   nix run .#ci       # Run CI checks
+   ```
+
+4. Test your changes:
+   ```bash
+   nix build .#openhands  # Build the package
+   nix run .#openhands    # Run OpenHands
+   ```
+
+### Updating Dependencies
+
+#### Python Dependencies
+
+1. Update `pyproject.toml` and `poetry.lock`:
+   ```bash
+   poetry add new-package
+   poetry update
+   ```
+
+2. Update the flake lock:
+   ```bash
+   nix flake update
+   ```
+
+#### Node.js Dependencies
+
+1. Update `frontend/package.json` and `frontend/package-lock.json`:
+   ```bash
+   cd frontend
+   npm install new-package
+   npm update
+   ```
+
+2. Rebuild the frontend package:
+   ```bash
+   nix build .#openhands-frontend
+   ```
+
+### CI Integration
+
+The Nix flake can be used in CI/CD pipelines:
+
+```yaml
+# .github/workflows/nix.yml
+name: Nix Build and Test
+
+on: [push, pull_request]
+
+jobs:
+  nix:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: cachix/install-nix-action@v22
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+    
+    - name: Check flake
+      run: nix flake check
+    
+    - name: Build packages
+      run: |
+        nix build .#openhands-backend
+        nix build .#openhands-frontend
+        nix build .#openhands
+    
+    - name: Run tests
+      run: nix develop --command pytest
+    
+    - name: Format check
+      run: nix run .#fmt -- --check .
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Flake evaluation errors**: Ensure you have the latest Nix version with flakes support enabled.
+
+2. **Build failures**: Check that all dependencies are properly specified in the flake.
+
+3. **Permission issues**: Ensure the OpenHands user has proper permissions for Docker (if used).
+
+4. **Port conflicts**: Make sure the configured port is not already in use.
+
+### Getting Help
+
+- Check the [OpenHands documentation](https://docs.all-hands.dev/)
+- Report issues on [GitHub](https://github.com/All-Hands-AI/OpenHands/issues)
+- Join the community on [Discord](https://discord.gg/ESHStjSjD4)
+
+## Advantages of Nix
+
+1. **Reproducibility**: Exact same environment across all machines
+2. **Isolation**: No conflicts with system packages
+3. **Rollbacks**: Easy to revert to previous versions
+4. **Caching**: Binary caches speed up builds
+5. **Declarative**: Infrastructure as code
+6. **No Docker**: Native deployment without containerization overhead
