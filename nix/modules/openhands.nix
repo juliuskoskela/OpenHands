@@ -197,7 +197,7 @@ in {
     # Systemd service
     systemd.services.openhands = {
       description = "OpenHands AI Software Engineer";
-      after = [ "network.target" ];
+      after = [ "network.target" ] ++ (optional (hasInfix "docker" cfg.sandboxImage || hasInfix "ghcr.io" cfg.sandboxImage) "docker.service");
       wantedBy = [ "multi-user.target" ];
 
       environment = envVars;
@@ -224,7 +224,6 @@ in {
 
       # Ensure Docker is available if using default sandbox
       requires = mkIf (hasInfix "docker" cfg.sandboxImage || hasInfix "ghcr.io" cfg.sandboxImage) [ "docker.service" ];
-      after = mkIf (hasInfix "docker" cfg.sandboxImage || hasInfix "ghcr.io" cfg.sandboxImage) [ "docker.service" ];
     };
 
     # Open firewall if requested
