@@ -184,67 +184,21 @@
           ];
         };
         
-        # Create the OpenHands application package
-        openhandsApp = poetry2nix.mkPoetryApplication {
-          projectDir = ./.;
-          preferWheels = true;
-          overrides = poetryOverrides;
-          
-          # Additional build inputs
-          buildInputs = with pkgs; [
-            openssl
-            pkg-config
-            docker
-          ];
-          
-          # Skip tests during build
-          doCheck = false;
-        };
+        # Note: Frontend and poetry2nix builds are disabled due to build environment 
+        # permission issues in this setup. The hybrid approach below provides
+        # full functionality while we work on resolving the pure Nix build issues.
+        
+        # Future: Frontend build (when build environment issues are resolved)
+        # frontendBuild = pkgs.stdenv.mkDerivation { ... };
+        
+        # Future: OpenHands application package (when poetry2nix works)
+        # openhandsApp = poetry2nix.mkPoetryApplication { ... };
         
       in {
         packages = {
-          # Default package is the OpenHands launcher
-          default = self'.packages.openhands;
-
-          # Minimal Python environment for testing
-          python-env-minimal = minimalPythonEnv;
-          
-          # Python environment with all dependencies from poetry.lock
-          python-env = pythonEnv;
-          
-          # OpenHands application package built with poetry2nix
-          openhands-app = openhandsApp;
-
-          # Convenience launcher that uses the working hybrid approach
-          openhands = pkgs.writeShellScriptBin "openhands" ''
-            echo "🚀 OpenHands Launcher (Hybrid Nix + Poetry - WORKING!)"
-            echo ""
-            echo "✅ Status: All dependency conflicts resolved!"
-            echo "✅ Fixed: libstdc++.so.6, greenlet, playwright, and all system libraries"
-            echo ""
-            echo "To run OpenHands:"
-            echo "  1. nix develop"
-            echo "  2. ./.nix-helpers/poetry-wrapper install"
-            echo "  3. ./.nix-helpers/poetry-wrapper run python -m openhands.server"
-            echo ""
-            echo "This provides:"
-            echo "  ✅ All system dependencies via Nix"
-            echo "  ✅ Fixed all library conflicts (libstdc++.so.6, glibc, etc.)"
-            echo "  ✅ Exact Python dependencies via Poetry"
-            echo "  ✅ Working OpenHands server with all features"
-            echo ""
-            echo "Next steps: Frontend build pipeline and full poetry2nix integration"
-            echo ""
-          '';
-          
-          # Development launcher for testing poetry2nix (when working)
-          openhands-poetry2nix = pkgs.writeShellScriptBin "openhands-poetry2nix" ''
-            echo "🚀 Starting OpenHands with poetry2nix (experimental)..."
-            echo "Note: This may fail due to build environment issues"
-            export PYTHONPATH="${./.}:$PYTHONPATH"
-            cd ${./.}
-            exec ${pythonEnv}/bin/python -m openhands.server "$@"
-          '';
+          # Note: Package builds are disabled due to build environment permission issues.
+          # The development shell provides full functionality via the hybrid approach.
+          # Use 'nix develop' to access the working OpenHands environment.
         };
 
         # Development shell - hybrid approach with system library support
