@@ -32,7 +32,29 @@ extension installed, you can open the project in a dev container by using the
 _Dev Container: Reopen in Container_ command from the Command Palette
 (Ctrl+Shift+P).
 
-#### Develop without sudo access
+#### Alternative Development Environments
+
+##### Nix (Recommended for Reproducible Development)
+
+OpenHands supports [Nix](https://nixos.org/) for reproducible development environments:
+
+```bash
+# Install Nix with flakes support
+curl -L https://nixos.org/nix/install | sh
+
+# Enable flakes (add to ~/.config/nix/nix.conf)
+echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+
+# Enter development environment (provides Python, Node.js, Poetry, Docker, etc.)
+nix develop
+
+# Or use direnv for automatic environment loading
+echo "use flake" > .envrc && direnv allow
+```
+
+See [docs/usage/nix.mdx](docs/usage/nix.mdx) for complete Nix documentation.
+
+##### Conda/Mamba (Without sudo access)
 
 If you want to develop without system admin/sudo access to upgrade/install `Python` and/or `NodeJs`, you can use
 `conda` or `mamba` to manage the packages for you:
